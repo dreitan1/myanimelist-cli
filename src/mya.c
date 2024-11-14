@@ -22,6 +22,7 @@
 #define OPT_PLANTOWATCH  'p'
 #define OPT_ALL          'a'
 #define OPT_SFW          's'
+#define OPT_JSON         'j'
 
 /* constants for ANSI color codes */
 #define ANSI_CODE_CYAN     "\033" "[0;36m"
@@ -41,6 +42,7 @@ static struct argp_option options[]  = {
 	{ "plantowatch", OPT_PLANTOWATCH, 0, 0, "Fetch a user's plan to watch anime"      },
 	{ "all",         OPT_ALL,         0, 0, "Fetch all anime for a user"              },
 	{ "sfw",         OPT_SFW,         0, 0, "Fetch only SFW anime"                    },
+	{"json",         OPT_JSON,        0, 0, "Format results as JSON"                  },
 	{ 0 },
 };
 
@@ -48,6 +50,7 @@ static struct argp_option options[]  = {
 struct arguments {
 	enum { WATCHING_MODE, COMPLETED_MODE, HOLD_MODE, DROPPED_MODE, PLAN_MODE, ALL_MODE } mode;
 	int nsfw;
+	int json;
 	char *args[1];
 };
 
@@ -126,6 +129,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state) {
 	case OPT_PLANTOWATCH: arguments->mode = PLAN_MODE;      break;
 	case OPT_ALL:         arguments->mode = ALL_MODE;       break;
 	case OPT_SFW:         arguments->nsfw = 0;              break;
+	case OPT_JSON:        arguments->json = 1;		break;
 
 	/* parse arguments */
 	case ARGP_KEY_ARG:
@@ -463,6 +467,7 @@ int main (int argc, char *argv[]) {
 	struct arguments arguments;
 	arguments.mode = WATCHING_MODE;
 	arguments.nsfw = 1;
+	arguments.json = 0;
 	argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
 	/* setup uri to fetch based on arguments */
@@ -497,8 +502,13 @@ int main (int argc, char *argv[]) {
 		get_new_uri(uri, uri_size, json);
 
 		/* print out the anime list */
-		print_anime_list(anime_list, page_num, endpoint, arguments.mode);
-
+		if (arguments.json == 0) {
+			print_anime_list(anime_list, page_num, endpoint, arguments.mode);
+		/* print out the anime json */
+		} else {
+			const char *serialized_json = json_object_to_json_string(anime_list);
+			printf("%s\n", serialized_json);
+		}
 		/* cleanup json */
 		json_object_put(json);
 
